@@ -22,7 +22,10 @@ try {
       (progress) => {
         report({ type: 'progress', progress })
       },
-      { ignoredKeys: workerData.ignoredKeys || [] },
+      {
+        ignoredKeys: workerData.ignoredKeys || [],
+        similarityLevel: workerData.similarityLevel || 'default',
+      },
     )
     report({ type: 'result', result })
   } else {

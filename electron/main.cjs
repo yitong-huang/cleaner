@@ -4,6 +4,8 @@ const path = require('path')
 const { Worker } = require('worker_threads')
 const { isPhotoPathAllowed, makePreviewDataUrl } = require('./photos.cjs')
 const { addIgnoredGroup, loadIgnoredKeys } = require('./photo-ignore.cjs')
+const { loadPhotoScanCache, savePhotoScanCache } = require('./photo-scan-cache.cjs')
+const { loadSettings, saveSettings } = require('./settings.cjs')
 const { deletePhotoTargets } = require('./photos-library.cjs')
 
 const isDev = !app.isPackaged
@@ -145,7 +147,11 @@ app.whenReady().then(() => {
               label: '设置…',
               accelerator: 'Command+,',
               click: () => {
-                // 设置页暂未实现
+                if (mainWindow && !mainWindow.isDestroyed()) {
+                  mainWindow.webContents.send('cleaner:open-settings')
+                  mainWindow.show()
+                  mainWindow.focus()
+                }
               },
             },
             { type: 'separator' },
@@ -172,9 +178,33 @@ app.on('window-all-closed', () => {
 })
 
 ipcMain.handle('cleaner:scan', async () => runWorkerTask('scan'))
-ipcMain.handle('cleaner:photos-scan', async () =>
-  runWorkerTask('photos-scan', { ignoredKeys: loadIgnoredKeys(app.getPath('userData')) }),
+ipcMain.handle('cleaner:photos-scan', async () => {
+  const settings = loadSettings(app.getPath('userData'))
+  const result = await runWorkerTask('photos-scan', {
+    ignoredKeys: loadIgnoredKeys(app.getPath('userData')),
+    similarityLevel: settings.similarityLevel,
+  })
+  try {
+    savePhotoScanCache(app.getPath('userData'), result)
+  } catch {
+    /* 缓存失败不影响扫描结果返回 */
+  }
+  return result
+})
+
+ipcMain.handle('cleaner:settings-get', async () => loadSettings(app.getPath('userData')))
+
+ipcMain.handle('cleaner:settings-set', async (_event, patch) =>
+  saveSettings(app.getPath('userData'), patch),
 )
+
+ipcMain.handle('cleaner:photos-scan-cache-load', async () => {
+  return loadPhotoScanCache(app.getPath('userData'))
+})
+
+ipcMain.handle('cleaner:photos-scan-cache-save', async (_event, result) => {
+  return savePhotoScanCache(app.getPath('userData'), result)
+})
 
 ipcMain.handle('cleaner:clean', async (_event, paths) => {
   if (!Array.isArray(paths)) throw new Error('paths must be an array')

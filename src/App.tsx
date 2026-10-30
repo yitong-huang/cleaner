@@ -13,15 +13,28 @@ import {
   deletePhotos,
   fetchPhotoScan,
   fetchScan,
+  getSettings,
   ignorePhotoGroup,
+  loadPhotoScanCache,
+  onOpenSettings,
   onProgress,
   openFullDiskAccess,
   previewPhoto,
   revealElectronApp,
+  savePhotoScanCache,
+  setSettings,
   type ProgressInfo,
 } from './api'
 import { formatBytes, percent } from './format'
-import type { AppMode, PhotoAccessHelp, PhotoScanResult, ScanItem, ScanResult } from './types'
+import type {
+  AppMode,
+  AppSettings,
+  PhotoAccessHelp,
+  PhotoScanResult,
+  ScanItem,
+  ScanResult,
+  SimilarityLevel,
+} from './types'
 import './App.css'
 
 type GroupPreviewMap = Record<string, { dataUrl: string | null; loading: boolean; error: string | null }>
@@ -43,6 +56,28 @@ function safetyLabel(safety: ScanItem['safety']) {
   return safety === 'safe' ? '可安全删除' : safety === 'caution' ? '需确认' : '保留'
 }
 
+const SIMILARITY_OPTIONS: Array<{
+  value: SimilarityLevel
+  title: string
+  description: string
+}> = [
+  {
+    value: 'strict',
+    title: '严格',
+    description: '只归组几乎相同的副本，以及约 45 秒内差异极小的连拍。',
+  },
+  {
+    value: 'default',
+    title: '默认',
+    description: '近重复任意时间可归组；约 90 秒内的连拍允许轻微构图变化。',
+  },
+  {
+    value: 'loose',
+    title: '宽松',
+    description: '更容易归组；约 5 分钟内的相近照片也会合并，适合多筛一些。',
+  },
+]
+
 export default function App() {
   const [mode, setMode] = useState<AppMode>('system')
   const [scan, setScan] = useState<ScanResult | null>(null)
@@ -61,8 +96,39 @@ export default function App() {
   const [viewerImageSizes, setViewerImageSizes] = useState<Record<string, { w: number; h: number }>>(
     {},
   )
+  const [settingsOpen, setSettingsOpen] = useState(false)
+  const [settings, setSettingsState] = useState<AppSettings>({ similarityLevel: 'default' })
+  const [settingsDraft, setSettingsDraft] = useState<AppSettings>({ similarityLevel: 'default' })
+  const [settingsSaving, setSettingsSaving] = useState(false)
 
   useEffect(() => onProgress(setProgress), [])
+  useEffect(() => onOpenSettings(() => setSettingsOpen(true)), [])
+
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      try {
+        const [cached, loadedSettings] = await Promise.all([loadPhotoScanCache(), getSettings()])
+        if (cancelled) return
+        setSettingsState(loadedSettings)
+        setSettingsDraft(loadedSettings)
+        if (cached?.result) {
+          setPhotoScan(cached.result)
+          setMode('photos')
+        }
+      } catch {
+        /* 无缓存或读取失败时保持空白即可 */
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!settingsOpen) return
+    setSettingsDraft(settings)
+  }, [settingsOpen, settings])
 
   const viewingGroup =
     groupViewerIndex != null && photoScan ? photoScan.groups[groupViewerIndex] ?? null : null
@@ -213,6 +279,31 @@ export default function App() {
     }
   }
 
+  function persistPhotoScan(next: PhotoScanResult) {
+    setPhotoScan(next)
+    void savePhotoScanCache(next).catch(() => {})
+  }
+
+  async function saveSettingsDraft() {
+    setSettingsSaving(true)
+    try {
+      const next = await setSettings({ similarityLevel: settingsDraft.similarityLevel })
+      setSettingsState(next)
+      setSettingsDraft(next)
+      setSettingsOpen(false)
+      const changed = next.similarityLevel !== settings.similarityLevel
+      setToast(
+        changed
+          ? `已保存：图片相似性「${SIMILARITY_OPTIONS.find((o) => o.value === next.similarityLevel)?.title}」。请重新扫描相册后生效。`
+          : '设置已保存',
+      )
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '保存设置失败')
+    } finally {
+      setSettingsSaving(false)
+    }
+  }
+
   function runScan() {
     return mode === 'system' ? runSystemScan() : runPhotoScan()
   }
@@ -288,7 +379,7 @@ export default function App() {
         paths: group.photos.map((p) => p.path),
       })
       const nextGroups = photoScan.groups.filter((g) => g.id !== groupId)
-      setPhotoScan({
+      persistPhotoScan({
         ...photoScan,
         groups: nextGroups,
         summary: {
@@ -399,7 +490,7 @@ export default function App() {
           })
           .filter((group): group is NonNullable<typeof group> => group != null)
 
-        setPhotoScan({
+        persistPhotoScan({
           ...photoScan,
           groups: nextGroups,
           summary: {
@@ -809,6 +900,11 @@ export default function App() {
                               ) : (
                                 <div className="photo-fallback">无预览</div>
                               )}
+                              {photo.favorite ? (
+                                <span className="photo-favorite" title="已点赞" aria-label="已点赞">
+                                  ♥
+                                </span>
+                              ) : null}
                             </button>
                             <div className="photo-info">
                               <div className="photo-name" title={photo.fileName}>
@@ -930,6 +1026,11 @@ export default function App() {
                         <div className="photo-fallback">无法预览</div>
                       )}
                       {previewState?.loading && <div className="group-viewer-loading">加载大图…</div>}
+                      {photo.favorite ? (
+                        <span className="photo-favorite" title="已点赞" aria-label="已点赞">
+                          ♥
+                        </span>
+                      ) : null}
                     </div>
                     <div className="group-viewer-meta">
                       <div className="photo-name" title={photo.fileName}>
@@ -960,6 +1061,66 @@ export default function App() {
                   : '已是最后一组'}
               </small>
             </button>
+          </div>
+        </div>
+      )}
+
+      {settingsOpen && (
+        <div
+          className="settings-overlay"
+          role="dialog"
+          aria-modal="true"
+          aria-label="设置"
+          onClick={() => setSettingsOpen(false)}
+        >
+          <div className="settings-panel" onClick={(event) => event.stopPropagation()}>
+            <div className="settings-header">
+              <h2>设置</h2>
+              <button type="button" className="btn btn-ghost btn-compact" onClick={() => setSettingsOpen(false)}>
+                关闭
+              </button>
+            </div>
+
+            <section className="settings-section">
+              <h3>图片相似性</h3>
+              <p className="settings-hint">决定相册扫描如何归组相似照片。修改后需重新扫描才会应用到结果。</p>
+              <div className="settings-options" role="radiogroup" aria-label="图片相似性">
+                {SIMILARITY_OPTIONS.map((option) => {
+                  const checked = settingsDraft.similarityLevel === option.value
+                  return (
+                    <label key={option.value} className={`settings-option ${checked ? 'active' : ''}`}>
+                      <input
+                        type="radio"
+                        name="similarityLevel"
+                        value={option.value}
+                        checked={checked}
+                        onChange={() =>
+                          setSettingsDraft((prev) => ({ ...prev, similarityLevel: option.value }))
+                        }
+                      />
+                      <span className="settings-option-body">
+                        <strong>{option.title}</strong>
+                        <span>{option.description}</span>
+                      </span>
+                    </label>
+                  )
+                })}
+              </div>
+            </section>
+
+            <div className="settings-actions">
+              <button type="button" className="btn btn-ghost" onClick={() => setSettingsOpen(false)}>
+                取消
+              </button>
+              <button
+                type="button"
+                className="btn btn-primary"
+                disabled={settingsSaving}
+                onClick={() => void saveSettingsDraft()}
+              >
+                {settingsSaving ? '保存中…' : '保存'}
+              </button>
+            </div>
           </div>
         </div>
       )}

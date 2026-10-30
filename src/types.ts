@@ -57,6 +57,7 @@ export interface PhotoItem {
   mtime: number
   photosUuid?: string | null
   source?: 'original' | 'derivative' | 'file'
+  favorite?: boolean
   thumbDataUrl: string | null
   keepSuggested: boolean
 }
@@ -92,8 +93,15 @@ export interface PhotoScanResult {
     ignoredGroupCount: number
     totalBytes: number
     reclaimableBytes: number
+    similarityLevel?: SimilarityLevel
   }
   groups: PhotoGroup[]
+}
+
+export type SimilarityLevel = 'strict' | 'default' | 'loose'
+
+export interface AppSettings {
+  similarityLevel: SimilarityLevel
 }
 
 export type AppMode = 'system' | 'photos'

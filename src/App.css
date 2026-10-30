@@ -556,6 +556,7 @@
 }
 
 .photo-thumb {
+  position: relative;
   width: 100%;
   aspect-ratio: 1;
   border: none;
@@ -564,6 +565,33 @@
   overflow: hidden;
   background: #e8eeec;
   cursor: zoom-in;
+}
+
+.photo-favorite {
+  position: absolute;
+  left: 8px;
+  bottom: 8px;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.45);
+  color: #ff3b30;
+  font-size: 13px;
+  line-height: 1;
+  pointer-events: none;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+}
+
+.group-viewer-image .photo-favorite {
+  left: 10px;
+  bottom: 10px;
+  width: 28px;
+  height: 28px;
+  font-size: 16px;
+  background: rgba(0, 0, 0, 0.55);
 }
 
 .photo-thumb img {
@@ -850,6 +878,101 @@
   margin-top: 2px;
   color: var(--muted);
   font-size: 0.72rem;
+}
+
+.settings-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(15, 28, 28, 0.42);
+  -webkit-app-region: no-drag;
+}
+
+.settings-panel {
+  width: min(520px, 100%);
+  max-height: min(84vh, 720px);
+  overflow: auto;
+  background: var(--bg-elevated);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  box-shadow: 0 24px 64px rgba(20, 34, 33, 0.22);
+  padding: 20px 22px 18px;
+}
+
+.settings-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.settings-header h2 {
+  font-size: 1.35rem;
+}
+
+.settings-section h3 {
+  font-size: 1rem;
+  margin-bottom: 6px;
+}
+
+.settings-hint {
+  margin: 0 0 14px;
+  color: var(--muted);
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.settings-options {
+  display: grid;
+  gap: 10px;
+}
+
+.settings-option {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 12px;
+  align-items: start;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.55);
+  cursor: pointer;
+}
+
+.settings-option.active {
+  border-color: rgba(15, 61, 62, 0.45);
+  background: var(--accent-soft);
+}
+
+.settings-option input {
+  margin-top: 3px;
+  accent-color: var(--accent);
+}
+
+.settings-option-body {
+  display: grid;
+  gap: 4px;
+}
+
+.settings-option-body strong {
+  font-size: 0.98rem;
+}
+
+.settings-option-body span {
+  color: var(--muted);
+  font-size: 0.88rem;
+  line-height: 1.4;
+}
+
+.settings-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 20px;
 }
 
 .toast {

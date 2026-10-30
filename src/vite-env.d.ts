@@ -1,10 +1,12 @@
 import type { ProgressInfo } from './api'
-import type { CleanResult, PhotoScanResult, ScanResult } from './types'
+import type { AppSettings, CleanResult, PhotoScanResult, ScanResult } from './types'
 
 interface CleanerApi {
   scan: () => Promise<ScanResult>
   clean: (paths: string[]) => Promise<CleanResult>
   scanPhotos: () => Promise<PhotoScanResult>
+  loadPhotoScanCache: () => Promise<{ result: PhotoScanResult; savedAt: string | null } | null>
+  savePhotoScanCache: (result: PhotoScanResult) => Promise<{ ok: boolean; savedAt?: string; reason?: string }>
   deletePhotos: (
     targets: Array<
       | string
@@ -27,7 +29,10 @@ interface CleanerApi {
   }>
   openFullDiskAccess: () => Promise<{ ok: boolean }>
   revealElectronApp: () => Promise<{ ok: boolean; path: string }>
+  getSettings: () => Promise<AppSettings>
+  setSettings: (patch: Partial<AppSettings>) => Promise<AppSettings>
   onProgress: (callback: (progress: ProgressInfo) => void) => () => void
+  onOpenSettings: (callback: () => void) => () => void
   platform: string
 }
 

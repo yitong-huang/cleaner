@@ -108,6 +108,7 @@ function collectScanCandidates(onProgress) {
           bytes: item.bytes,
           mtime: item.mtime,
           takenAt: item.takenAt || 0,
+          favorite: Boolean(item.favorite),
           source: item.source,
         })
       }
@@ -140,6 +141,7 @@ function collectScanCandidates(onProgress) {
       bytes: stat.size,
       mtime: stat.mtimeMs,
       takenAt: stat.mtimeMs,
+      favorite: false,
       source: 'file',
     })
   }
@@ -374,13 +376,35 @@ function makePreviewDataUrl(filePath) {
   }
 }
 
-const BURST_WINDOW_MS = 90 * 1000
-const SIMILARITY = {
-  // 任意时间：几乎相同（重复导入、导出副本、轻微压缩）
-  duplicate: { pHash: 6, dHash: 8, color: 28 },
-  // 同一场景连拍：允许轻微构图/表情变化
-  burst: { pHash: 12, dHash: 14, color: 36 },
-  aspectTolerance: 0.06,
+const SIMILARITY_PRESETS = {
+  // 严格：几乎只收重复导入/压缩副本与极近连拍
+  strict: {
+    label: '严格',
+    duplicate: { pHash: 4, dHash: 5, color: 18 },
+    burst: { pHash: 8, dHash: 9, color: 24 },
+    aspectTolerance: 0.04,
+    burstWindowMs: 45 * 1000,
+  },
+  // 默认：近重复任意时间；90 秒内连拍允许轻微变化
+  default: {
+    label: '默认',
+    duplicate: { pHash: 6, dHash: 8, color: 28 },
+    burst: { pHash: 12, dHash: 14, color: 36 },
+    aspectTolerance: 0.06,
+    burstWindowMs: 90 * 1000,
+  },
+  // 宽松：更容易归组，连拍窗口更长
+  loose: {
+    label: '宽松',
+    duplicate: { pHash: 10, dHash: 12, color: 42 },
+    burst: { pHash: 18, dHash: 20, color: 58 },
+    aspectTolerance: 0.12,
+    burstWindowMs: 5 * 60 * 1000,
+  },
+}
+
+function getSimilarityConfig(level) {
+  return SIMILARITY_PRESETS[level] || SIMILARITY_PRESETS.default
 }
 
 function colorDistance(a, b) {
@@ -390,29 +414,31 @@ function colorDistance(a, b) {
   return Math.sqrt(dr * dr + dg * dg + db * db)
 }
 
-function isSimilarPhoto(a, b) {
+function isSimilarPhoto(a, b, config) {
+  const cfg = config || SIMILARITY_PRESETS.default
   const aspectGap = Math.abs(a.hash.aspect - b.hash.aspect) / Math.max(a.hash.aspect, b.hash.aspect)
-  if (aspectGap > SIMILARITY.aspectTolerance) return false
+  if (aspectGap > cfg.aspectTolerance) return false
 
   const p = hamming64(a.hash.pHash, b.hash.pHash)
-  if (p > SIMILARITY.burst.pHash) return false
+  if (p > cfg.burst.pHash) return false
   const d = hamming64(a.hash.dHash, b.hash.dHash)
-  if (d > SIMILARITY.burst.dHash) return false
+  if (d > cfg.burst.dHash) return false
   const c = colorDistance(a.hash.color, b.hash.color)
 
-  const strict = SIMILARITY.duplicate
-  if (p <= strict.pHash && d <= strict.dHash && c <= strict.color) return true
+  if (p <= cfg.duplicate.pHash && d <= cfg.duplicate.dHash && c <= cfg.duplicate.color) return true
 
   const sameMoment =
-    a.takenAt > 0 && b.takenAt > 0 && Math.abs(a.takenAt - b.takenAt) <= BURST_WINDOW_MS
-  return sameMoment && c <= SIMILARITY.burst.color
+    a.takenAt > 0 &&
+    b.takenAt > 0 &&
+    Math.abs(a.takenAt - b.takenAt) <= cfg.burstWindowMs
+  return sameMoment && c <= cfg.burst.color
 }
 
 /**
  * 近重复分组：候选必须与组内每一张都相似（全连接），
  * 避免“都像种子图、彼此不像”的松散大组。
  */
-function clusterByHash(items, onProgress) {
+function clusterByHash(items, onProgress, config) {
   const groups = []
   const used = new Set()
   const total = items.length
@@ -425,7 +451,7 @@ function clusterByHash(items, onProgress) {
     for (let j = i + 1; j < items.length; j += 1) {
       if (used.has(j)) continue
       const candidate = items[j]
-      if (!members.every((member) => isSimilarPhoto(member, candidate))) continue
+      if (!members.every((member) => isSimilarPhoto(member, candidate, config))) continue
       members.push(candidate)
       used.add(j)
     }
@@ -448,6 +474,11 @@ function buildPhotoScan(onProgress, options = {}) {
   const ignoredKeys = new Set(
     Array.isArray(options.ignoredKeys) ? options.ignoredKeys.filter((k) => typeof k === 'string') : [],
   )
+  const similarityLevel =
+    options.similarityLevel === 'strict' || options.similarityLevel === 'loose'
+      ? options.similarityLevel
+      : 'default'
+  const similarity = getSimilarityConfig(similarityLevel)
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'cleaner-photos-'))
   try {
     if (typeof onProgress === 'function') {
@@ -533,7 +564,7 @@ function buildPhotoScan(onProgress, options = {}) {
 
     // 按拍摄时间排序，让连拍在聚类时先相遇
     hashed.sort((a, b) => (a.takenAt || 0) - (b.takenAt || 0))
-    const clusters = clusterByHash(hashed, onProgress)
+    const clusters = clusterByHash(hashed, onProgress, similarity)
     const similarAll = clusters
       .filter((g) => g.length >= 2)
       .sort((a, b) => {
@@ -593,6 +624,7 @@ function buildPhotoScan(onProgress, options = {}) {
           mtime: photo.mtime,
           photosUuid: photo.photosUuid,
           source: photo.source,
+          favorite: Boolean(photo.favorite),
           thumbDataUrl: makeThumbDataUrl(photo.path, tmpDir),
           keepSuggested: photoIndex === 0,
         }
@@ -614,7 +646,7 @@ function buildPhotoScan(onProgress, options = {}) {
       accessError: null,
       accessHelp: null,
       note: exists(library)
-        ? `相似组同时比对 pHash、dHash、宽高比与色调：几乎相同的副本任意时间都会归组，90 秒内的连拍允许轻微差异。优先本地原图，缺失时用衍生图；删除经「照片」同步 iCloud。本次原图 ${hashedOriginals} 张，衍生图 ${hashedDerivatives} 张。`
+        ? `相似性：${similarity.label}。同时比对 pHash、dHash、宽高比与色调；近重复任意时间可归组，${Math.round(similarity.burstWindowMs / 1000)} 秒内连拍允许更大差异。优先本地原图，缺失时用衍生图；删除经「照片」同步 iCloud。本次原图 ${hashedOriginals} 张，衍生图 ${hashedDerivatives} 张。`
         : null,
       summary: {
         discoveredCount: files.length,
@@ -628,6 +660,7 @@ function buildPhotoScan(onProgress, options = {}) {
         ignoredGroupCount,
         totalBytes: hashed.reduce((s, p) => s + p.bytes, 0),
         reclaimableBytes: groups.reduce((s, g) => s + g.reclaimableBytes, 0),
+        similarityLevel,
       },
       groups,
     }
@@ -655,4 +688,6 @@ module.exports = {
   buildPhotoScan,
   isPhotoPathAllowed,
   makePreviewDataUrl,
+  SIMILARITY_PRESETS,
+  getSimilarityConfig,
 }

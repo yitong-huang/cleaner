@@ -142,7 +142,8 @@ SELECT
   IFNULL(COALESCE(a.ZORIGINALFILENAME, z.ZFILENAME), ''),
   IFNULL(COALESCE(a.ZORIGINALFILESIZE, 0), 0),
   IFNULL(z.ZKIND, 0),
-  IFNULL(z.ZDATECREATED, 0)
+  IFNULL(z.ZDATECREATED, 0),
+  IFNULL(z.ZFAVORITE, 0)
 FROM ZASSET z
 LEFT JOIN ZADDITIONALASSETATTRIBUTES a ON a.ZASSET = z.Z_PK
 WHERE z.ZTRASHEDSTATE = 0
@@ -152,7 +153,8 @@ WHERE z.ZTRASHEDSTATE = 0
 
   const assets = []
   for (const line of sqliteQuery(dbPath, sql)) {
-    const [uuidRaw, directory, filename, originalName, sizeText, , createdText] = line.split('\t')
+    const [uuidRaw, directory, filename, originalName, sizeText, , createdText, favoriteText] =
+      line.split('\t')
     const uuid = normalizeUuid(uuidRaw)
     if (!uuid) continue
     const created = Number(createdText)
@@ -164,6 +166,7 @@ WHERE z.ZTRASHEDSTATE = 0
       originalBytes: Number(sizeText) || 0,
       // Core Data 时间戳以 2001-01-01 为纪元
       takenAt: created > 0 ? (created + 978307200) * 1000 : 0,
+      favorite: Number(favoriteText) === 1,
     })
   }
   return assets
@@ -273,6 +276,7 @@ function collectLibraryScanItems(libraryPath = DEFAULT_LIBRARY, onProgress) {
       bytes: asset.originalBytes > 0 ? asset.originalBytes : stat.size,
       mtime: stat.mtimeMs,
       takenAt: asset.takenAt || 0,
+      favorite: Boolean(asset.favorite),
       source: local.source,
     })
   }

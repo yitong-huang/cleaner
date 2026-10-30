@@ -1,4 +1,4 @@
-import type { CleanResult, PhotoScanResult, ScanResult } from './types'
+import type { AppSettings, CleanResult, PhotoScanResult, ScanResult } from './types'
 
 export interface ProgressInfo {
   phase: 'scan' | 'clean'
@@ -24,6 +24,21 @@ export async function cleanPaths(paths: string[]): Promise<CleanResult> {
 
 export async function fetchPhotoScan(): Promise<PhotoScanResult> {
   return getApi().scanPhotos()
+}
+
+export async function loadPhotoScanCache(): Promise<{
+  result: PhotoScanResult
+  savedAt: string | null
+} | null> {
+  return getApi().loadPhotoScanCache()
+}
+
+export async function savePhotoScanCache(result: PhotoScanResult): Promise<{
+  ok: boolean
+  savedAt?: string
+  reason?: string
+}> {
+  return getApi().savePhotoScanCache(result)
 }
 
 export async function deletePhotos(
@@ -66,4 +81,16 @@ export async function revealElectronApp() {
 
 export function onProgress(callback: (progress: ProgressInfo) => void): () => void {
   return getApi().onProgress(callback)
+}
+
+export function onOpenSettings(callback: () => void): () => void {
+  return getApi().onOpenSettings(callback)
+}
+
+export async function getSettings(): Promise<AppSettings> {
+  return getApi().getSettings()
+}
+
+export async function setSettings(patch: Partial<AppSettings>): Promise<AppSettings> {
+  return getApi().setSettings(patch)
 }
