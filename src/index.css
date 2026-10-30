@@ -1,0 +1,64 @@
+:root {
+  --bg: #eef3f2;
+  --bg-elevated: #fbfcfc;
+  --ink: #142221;
+  --muted: #5a6d6a;
+  --line: #cfdad7;
+  --accent: #0f3d3e;
+  --accent-soft: #d4ebe6;
+  --safe: #1f7a55;
+  --safe-bg: #e3f3eb;
+  --caution: #8a5a16;
+  --caution-bg: #f4ead8;
+  --danger: #9b2c2c;
+  --chart-1: #0f3d3e;
+  --chart-2: #2f6f6a;
+  --chart-3: #7bc4a8;
+  --chart-4: #4d7c8a;
+  --chart-5: #6b7c78;
+  --radius: 14px;
+  font-family: 'IBM Plex Sans', 'PingFang SC', 'Noto Sans SC', sans-serif;
+  line-height: 1.45;
+  font-weight: 400;
+  color: var(--ink);
+  background: var(--bg);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  background:
+    radial-gradient(1000px 420px at 8% -8%, rgba(47, 111, 106, 0.16), transparent 55%),
+    radial-gradient(800px 360px at 100% 0%, rgba(123, 196, 168, 0.18), transparent 48%),
+    linear-gradient(180deg, #e7efed 0%, var(--bg) 40%, #e4ecea 100%);
+}
+
+button,
+input {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+h1,
+h2,
+h3 {
+  font-family: Syne, 'IBM Plex Sans', sans-serif;
+  letter-spacing: -0.03em;
+  margin: 0;
+}
