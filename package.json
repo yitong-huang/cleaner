@@ -45,6 +45,9 @@
       "electron/**/*",
       "package.json"
     ],
+    "asarUnpack": [
+      "electron/bin/**"
+    ],
     "mac": {
       "category": "public.app-category.utilities",
       "icon": "build/icon.icns",
@@ -56,7 +59,11 @@
       ],
       "identity": null,
       "hardenedRuntime": false,
-      "gatekeeperAssess": false
+      "gatekeeperAssess": false,
+      "extendInfo": {
+        "NSAppleEventsUsageDescription": "Cleaner 需要控制「照片」应用，以便将所选图片移到「最近删除」并同步到 iCloud。",
+        "NSPhotoLibraryUsageDescription": "Cleaner 需要访问照片图库，以便把你选中的相似照片移到「最近删除」并同步到 iCloud。"
+      }
     }
   }
 }

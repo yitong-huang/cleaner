@@ -1,17 +1,28 @@
-const { app, BrowserWindow, ipcMain, shell } = require('electron')
+const { app, BrowserWindow, ipcMain, screen, shell } = require('electron')
 const fs = require('fs')
 const path = require('path')
 const { Worker } = require('worker_threads')
-const { isPhotoPathAllowed } = require('./photos.cjs')
+const { isPhotoPathAllowed, makePreviewDataUrl } = require('./photos.cjs')
+const { addIgnoredGroup, loadIgnoredKeys } = require('./photo-ignore.cjs')
+const { deletePhotoTargets } = require('./photos-library.cjs')
 
 const isDev = !app.isPackaged
 let mainWindow = null
 let activeWorker = null
 
+function getDevElectronAppPath() {
+  return path.join(__dirname, '..', 'node_modules', 'electron', 'dist', 'Electron.app')
+}
+
 function createWindow() {
+  // 撑满当前屏幕可用区域（避开菜单栏/程序坞），不是系统全屏/最大化模式
+  const workArea = screen.getDisplayNearestPoint(screen.getCursorScreenPoint()).workArea
+
   mainWindow = new BrowserWindow({
-    width: 1180,
-    height: 820,
+    x: workArea.x,
+    y: workArea.y,
+    width: workArea.width,
+    height: workArea.height,
     minWidth: 960,
     minHeight: 680,
     title: 'Cleaner',
@@ -91,48 +102,36 @@ function runWorkerTask(type, payload = {}) {
   })
 }
 
-async function trashPhotos(paths) {
-  const deleted = []
+async function trashPhotos(targets) {
+  const list = Array.isArray(targets) ? targets : []
+  const allowed = []
   const skipped = []
-  const errors = []
-  const list = Array.isArray(paths) ? paths : []
-
-  for (let i = 0; i < list.length; i += 1) {
-    const raw = list[i]
-    if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send('cleaner:progress', {
-        phase: 'clean',
-        current: i + 1,
-        total: list.length,
-        label: path.basename(raw),
-      })
-    }
-    if (!fs.existsSync(raw)) {
-      skipped.push({ path: raw, reason: '不存在' })
-      continue
-    }
-    if (!isPhotoPathAllowed(raw)) {
-      skipped.push({ path: raw, reason: '不在相册允许路径内' })
-      continue
-    }
-    try {
-      const bytes = fs.statSync(raw).size
-      await shell.trashItem(raw)
-      deleted.push({ path: raw, bytes })
-    } catch (error) {
-      errors.push({ path: raw, reason: error.message || String(error) })
+  for (const item of list) {
+    const filePath = typeof item === 'string' ? item : item?.path
+    if (typeof filePath !== 'string' || !isPhotoPathAllowed(filePath)) {
+      skipped.push({ path: filePath || String(item), reason: '不在相册允许路径内' })
+    } else {
+      allowed.push(typeof item === 'string' ? { path: item } : item)
     }
   }
 
+  const result = await deletePhotoTargets(allowed, {
+    trashItem: (target) => shell.trashItem(target),
+    onProgress: (progress) => {
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('cleaner:progress', progress)
+      }
+    },
+  })
+
   return {
-    deleted,
-    skipped,
-    errors,
-    freedBytes: deleted.reduce((sum, item) => sum + item.bytes, 0),
+    ...result,
+    skipped: [...skipped, ...(result.skipped || [])],
   }
 }
 
 app.whenReady().then(() => {
+  app.setName('Cleaner')
   createWindow()
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
@@ -148,7 +147,9 @@ app.on('window-all-closed', () => {
 })
 
 ipcMain.handle('cleaner:scan', async () => runWorkerTask('scan'))
-ipcMain.handle('cleaner:photos-scan', async () => runWorkerTask('photos-scan'))
+ipcMain.handle('cleaner:photos-scan', async () =>
+  runWorkerTask('photos-scan', { ignoredKeys: loadIgnoredKeys(app.getPath('userData')) }),
+)
 
 ipcMain.handle('cleaner:clean', async (_event, paths) => {
   if (!Array.isArray(paths)) throw new Error('paths must be an array')
@@ -158,4 +159,53 @@ ipcMain.handle('cleaner:clean', async (_event, paths) => {
 ipcMain.handle('cleaner:photos-delete', async (_event, paths) => {
   if (!Array.isArray(paths)) throw new Error('paths must be an array')
   return trashPhotos(paths)
+})
+
+ipcMain.handle('cleaner:photos-preview', async (_event, filePath) => {
+  if (typeof filePath !== 'string' || !filePath) throw new Error('invalid path')
+  if (!isPhotoPathAllowed(filePath)) throw new Error('不在相册允许路径内')
+  if (!fs.existsSync(filePath)) throw new Error('文件不存在')
+  const dataUrl = makePreviewDataUrl(filePath)
+  if (!dataUrl) throw new Error('无法生成预览')
+  return { dataUrl }
+})
+
+ipcMain.handle('cleaner:photos-ignore-group', async (_event, payload) => {
+  const paths = Array.isArray(payload) ? payload : payload?.paths
+  const explicitKey = Array.isArray(payload) ? null : payload?.key
+  if (!Array.isArray(paths) || paths.length === 0) throw new Error('paths must be a non-empty array')
+  for (const p of paths) {
+    if (typeof p !== 'string' || !isPhotoPathAllowed(p)) {
+      throw new Error('忽略列表包含非法路径')
+    }
+  }
+  const key = addIgnoredGroup(app.getPath('userData'), paths, explicitKey || null)
+  return { key }
+})
+
+ipcMain.handle('cleaner:access-info', async () => {
+  const electronAppPath = getDevElectronAppPath()
+  return {
+    isDev,
+    appName: app.getName(),
+    electronAppPath: isDev && fs.existsSync(electronAppPath) ? electronAppPath : null,
+    execPath: process.execPath,
+  }
+})
+
+ipcMain.handle('cleaner:open-full-disk-access', async () => {
+  // macOS Ventura+
+  await shell.openExternal(
+    'x-apple.systempreferences:com.apple.settings.PrivacySecurity.extension?Privacy_AllFiles',
+  )
+  return { ok: true }
+})
+
+ipcMain.handle('cleaner:reveal-electron-app', async () => {
+  const electronAppPath = getDevElectronAppPath()
+  if (!fs.existsSync(electronAppPath)) {
+    throw new Error(`未找到 Electron.app：${electronAppPath}`)
+  }
+  shell.showItemInFolder(electronAppPath)
+  return { ok: true, path: electronAppPath }
 })

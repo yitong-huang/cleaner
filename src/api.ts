@@ -26,8 +26,42 @@ export async function fetchPhotoScan(): Promise<PhotoScanResult> {
   return getApi().scanPhotos()
 }
 
-export async function deletePhotos(paths: string[]): Promise<CleanResult> {
-  return getApi().deletePhotos(paths)
+export async function deletePhotos(
+  targets: Array<
+    | string
+    | {
+        path: string
+        uuid?: string | null
+        photosUuid?: string | null
+        fileName?: string
+        bytes?: number
+      }
+  >,
+): Promise<CleanResult> {
+  return getApi().deletePhotos(targets)
+}
+
+export async function previewPhoto(filePath: string): Promise<{ dataUrl: string }> {
+  return getApi().previewPhoto(filePath)
+}
+
+export async function ignorePhotoGroup(payload: {
+  paths: string[]
+  key?: string
+}): Promise<{ key: string }> {
+  return getApi().ignorePhotoGroup(payload)
+}
+
+export async function getAccessInfo() {
+  return getApi().getAccessInfo()
+}
+
+export async function openFullDiskAccess() {
+  return getApi().openFullDiskAccess()
+}
+
+export async function revealElectronApp() {
+  return getApi().revealElectronApp()
 }
 
 export function onProgress(callback: (progress: ProgressInfo) => void): () => void {

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>CFBundleIdentifier</key>
+  <string>com.cleaner.macos.photos-delete</string>
+  <key>CFBundleName</key>
+  <string>Cleaner Photos Helper</string>
+  <key>NSPhotoLibraryUsageDescription</key>
+  <string>Cleaner 需要访问照片图库，以便把你选中的相似照片移到「最近删除」并同步到 iCloud。</string>
+</dict>
+</plist>

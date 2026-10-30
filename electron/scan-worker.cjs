@@ -18,9 +18,12 @@ try {
     })
     report({ type: 'result', result })
   } else if (workerData?.type === 'photos-scan') {
-    const result = buildPhotoScan((progress) => {
-      report({ type: 'progress', progress })
-    })
+    const result = buildPhotoScan(
+      (progress) => {
+        report({ type: 'progress', progress })
+      },
+      { ignoredKeys: workerData.ignoredKeys || [] },
+    )
     report({ type: 'result', result })
   } else {
     throw new Error(`未知任务类型: ${workerData?.type}`)

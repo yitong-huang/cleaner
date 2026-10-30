@@ -8,6 +8,9 @@ APP="$ROOT/release/mac-arm64/Cleaner.app"
 OUT="$ROOT/release/Cleaner-0.1.0-arm64.dmg"
 STAGE="$ROOT/release/dmg-stage"
 
+echo "==> 编译照片删除组件"
+bash "$ROOT/scripts/build-native.sh"
+
 echo "==> 构建前端"
 npm run build
 

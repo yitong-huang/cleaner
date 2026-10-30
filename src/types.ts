@@ -42,10 +42,11 @@ export interface ScanResult {
 }
 
 export interface CleanResult {
-  deleted: { path: string; bytes: number }[]
+  deleted: { path: string; bytes: number; via?: string; uuid?: string }[]
   skipped: { path: string; reason: string }[]
   errors: { path: string; reason: string }[]
   freedBytes: number
+  viaPhotosApp?: boolean
 }
 
 export interface PhotoItem {
@@ -54,26 +55,41 @@ export interface PhotoItem {
   fileName: string
   bytes: number
   mtime: number
+  photosUuid?: string | null
+  source?: 'original' | 'derivative' | 'file'
   thumbDataUrl: string | null
   keepSuggested: boolean
 }
 
 export interface PhotoGroup {
   id: string
+  key: string
   count: number
   bytes: number
   reclaimableBytes: number
   photos: PhotoItem[]
 }
 
+export interface PhotoAccessHelp {
+  code: string
+  detail?: string | null
+}
+
 export interface PhotoScanResult {
   scannedAt: string
   accessError: string | null
+  accessHelp?: PhotoAccessHelp | null
+  note: string | null
   summary: {
+    discoveredCount: number
     photoCount: number
+    hashFailedCount: number
+    originalCount?: number
+    derivativeCount?: number
     groupCount: number
     similarGroupCount: number
     similarPhotoCount: number
+    ignoredGroupCount: number
     totalBytes: number
     reclaimableBytes: number
   }
