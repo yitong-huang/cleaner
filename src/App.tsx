@@ -463,10 +463,6 @@ export default function App() {
       <div className="drag-bar" aria-hidden />
       <header className="hero">
         <div className="hero-inner">
-          <div className="brand">
-            <h1>Cleaner</h1>
-          </div>
-
           <div className="mode-tabs" role="tablist" aria-label="扫描模式">
             <button
               type="button"

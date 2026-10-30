@@ -30,7 +30,7 @@
   position: relative;
   z-index: 40;
   margin: 0 -28px;
-  padding: 40px 28px var(--stack);
+  padding: 52px 28px var(--stack);
   background: var(--page-bg);
   background-attachment: fixed;
   border-bottom: none;
@@ -54,24 +54,6 @@
   padding: 0 28px 64px;
   overflow-x: hidden;
   overflow-y: auto;
-}
-
-.brand {
-  display: flex;
-  align-items: baseline;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-
-.brand h1 {
-  font-size: clamp(2rem, 4vw, 2.75rem);
-  font-weight: 800;
-  color: var(--accent);
-}
-
-.brand .tag {
-  color: var(--muted);
-  font-size: 0.95rem;
 }
 
 .mode-tabs {
@@ -691,19 +673,24 @@
 .group-viewer-grid {
   min-height: 0;
   overflow: auto;
-  display: grid;
+  display: flex;
+  flex-wrap: wrap;
+  align-content: flex-start;
+  align-items: flex-start;
   gap: 18px;
   padding: 16px 18px 28px;
-  align-content: start;
-  align-items: start;
 }
 
-.group-viewer-grid.is-landscape {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+.group-viewer-grid.is-landscape > .group-viewer-card {
+  flex: 0 0 calc((100% - 18px) / 2);
+  width: calc((100% - 18px) / 2);
+  max-width: calc((100% - 18px) / 2);
 }
 
-.group-viewer-grid.is-portrait {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+.group-viewer-grid.is-portrait > .group-viewer-card {
+  flex: 0 0 calc((100% - 54px) / 4);
+  width: calc((100% - 54px) / 4);
+  max-width: calc((100% - 54px) / 4);
 }
 
 .group-viewer-card {
@@ -716,9 +703,10 @@
   background: rgba(251, 252, 252, 0.04);
   cursor: pointer;
   min-width: 0;
-  height: auto;
-  align-self: start;
+  height: fit-content;
+  position: relative;
   overflow: hidden;
+  box-sizing: border-box;
 }
 
 .group-viewer-card.selected {
@@ -756,6 +744,7 @@
   overflow: hidden;
   background: #182222;
   line-height: 0;
+  min-height: 120px;
 }
 
 .group-viewer-image img {
@@ -763,14 +752,21 @@
   width: 100%;
   height: auto;
   max-width: 100%;
+  max-height: min(46vh, 480px);
   object-fit: contain;
   object-position: center;
+  margin: 0 auto;
+  vertical-align: top;
 }
 
 .group-viewer-image .photo-fallback {
-  min-height: 120px;
+  min-height: 160px;
   height: auto;
   aspect-ratio: 4 / 3;
+  display: grid;
+  place-items: center;
+  color: rgba(232, 242, 239, 0.55);
+  line-height: 1.3;
 }
 
 .group-viewer-loading {
@@ -809,8 +805,10 @@
 }
 
 @media (max-width: 1100px) {
-  .group-viewer-grid.is-portrait {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+  .group-viewer-grid.is-portrait > .group-viewer-card {
+    flex-basis: calc((100% - 36px) / 3);
+    width: calc((100% - 36px) / 3);
+    max-width: calc((100% - 36px) / 3);
   }
 }
 
@@ -819,9 +817,11 @@
     grid-template-columns: 64px minmax(0, 1fr) 64px;
   }
 
-  .group-viewer-grid.is-landscape,
-  .group-viewer-grid.is-portrait {
-    grid-template-columns: 1fr;
+  .group-viewer-grid.is-landscape > .group-viewer-card,
+  .group-viewer-grid.is-portrait > .group-viewer-card {
+    flex-basis: 100%;
+    width: 100%;
+    max-width: 100%;
   }
 }
 

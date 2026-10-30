@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, screen, shell } = require('electron')
+const { app, BrowserWindow, ipcMain, Menu, screen, shell } = require('electron')
 const fs = require('fs')
 const path = require('path')
 const { Worker } = require('worker_threads')
@@ -132,6 +132,31 @@ async function trashPhotos(targets) {
 
 app.whenReady().then(() => {
   app.setName('Cleaner')
+  // 菜单栏只保留「Cleaner」：关于、设置（暂空）、退出
+  if (process.platform === 'darwin') {
+    Menu.setApplicationMenu(
+      Menu.buildFromTemplate([
+        {
+          label: app.name,
+          submenu: [
+            { role: 'about', label: '关于 Cleaner' },
+            { type: 'separator' },
+            {
+              label: '设置…',
+              accelerator: 'Command+,',
+              click: () => {
+                // 设置页暂未实现
+              },
+            },
+            { type: 'separator' },
+            { role: 'quit', label: '退出 Cleaner' },
+          ],
+        },
+      ]),
+    )
+  } else {
+    Menu.setApplicationMenu(null)
+  }
   createWindow()
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
