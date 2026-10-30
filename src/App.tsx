@@ -58,7 +58,7 @@ export default function App() {
   const chartData = useMemo(() => {
     if (!scan) return []
     return scan.items.slice(0, 8).map((item) => ({
-      name: item.name.length > 12 ? `${item.name.slice(0, 12)}…` : item.name,
+      name: item.name.length > 11 ? `${item.name.slice(0, 11)}…` : item.name,
       fullName: item.name,
       gb: Math.round((item.bytes / (1024 ** 3)) * 100) / 100,
     }))
@@ -160,39 +160,39 @@ export default function App() {
     <div className="app">
       <div className="drag-bar" aria-hidden />
       <header className="hero">
-        <div className="brand">
-          <h1>Cleaner</h1>
-          <span className="tag">macOS 可清理空间检查</span>
-        </div>
-        <p className="hero-copy">
-          macOS 桌面客户端。按「系统数据 / 开发缓存 / IDE 残留」等常见占用来源扫描本机，标出可安全删除与需确认的项目，再勾选清理。
-        </p>
-        <div className="actions">
-          <button className="btn btn-primary" onClick={runScan} disabled={loading || cleaning}>
-            {loading ? '扫描中…' : scan ? '重新扫描' : '开始扫描'}
-          </button>
-          {scan && (
-            <>
-              <button className="btn btn-ghost" onClick={selectSafe} disabled={loading || cleaning}>
-                仅选安全项
-              </button>
-              <button className="btn btn-ghost" onClick={clearSelection} disabled={loading || cleaning}>
-                清空选择
-              </button>
-              <button
-                className="btn btn-danger"
-                onClick={runClean}
-                disabled={loading || cleaning || selectedBytes <= 0}
-              >
-                {cleaning ? '清理中…' : `清理所选（${formatBytes(selectedBytes)}）`}
-              </button>
-            </>
-          )}
-          {scan && !loading && <span className="meta">扫描于 {scan.scannedAt}</span>}
-          {progressText && <span className="meta progress-live">{progressText}</span>}
+        <div className="hero-inner">
+          <div className="brand">
+            <h1>Cleaner</h1>
+            <span className="tag">macOS 可清理空间检查</span>
+          </div>
+          <div className="actions">
+            <button className="btn btn-primary" onClick={runScan} disabled={loading || cleaning}>
+              {loading ? '扫描中…' : scan ? '重新扫描' : '开始扫描'}
+            </button>
+            {scan && (
+              <>
+                <button className="btn btn-ghost" onClick={selectSafe} disabled={loading || cleaning}>
+                  仅选安全项
+                </button>
+                <button className="btn btn-ghost" onClick={clearSelection} disabled={loading || cleaning}>
+                  清空选择
+                </button>
+                <button
+                  className="btn btn-danger"
+                  onClick={runClean}
+                  disabled={loading || cleaning || selectedBytes <= 0}
+                >
+                  {cleaning ? '清理中…' : `清理所选（${formatBytes(selectedBytes)}）`}
+                </button>
+              </>
+            )}
+            {scan && !loading && <span className="meta">扫描于 {scan.scannedAt}</span>}
+            {progressText && <span className="meta progress-live">{progressText}</span>}
+          </div>
         </div>
       </header>
 
+      <main className="content">
       {error && <div className="error">{error}</div>}
 
       {!scan && !loading && !error && (
@@ -256,11 +256,23 @@ export default function App() {
 
             <div className="panel">
               <h2>占用 Top 项（GB）</h2>
-              <div style={{ width: '100%', height: 220 }}>
+              <div className="top-chart" style={{ width: '100%', height: 220 }}>
                 <ResponsiveContainer>
-                  <BarChart data={chartData} layout="vertical" margin={{ left: 8, right: 12, top: 4, bottom: 4 }}>
+                  <BarChart
+                    data={chartData}
+                    layout="vertical"
+                    margin={{ left: 4, right: 16, top: 4, bottom: 4 }}
+                  >
                     <XAxis type="number" tick={{ fontSize: 11 }} unit=" GB" />
-                    <YAxis type="category" dataKey="name" width={108} tick={{ fontSize: 11 }} />
+                    <YAxis
+                      type="category"
+                      dataKey="name"
+                      width={132}
+                      interval={0}
+                      tick={{ fontSize: 12, fill: 'var(--muted)' }}
+                      tickLine={false}
+                      axisLine={false}
+                    />
                     <Tooltip
                       formatter={(value) => [`${value} GB`, '大小']}
                       labelFormatter={(_, payload) => payload?.[0]?.payload?.fullName ?? ''}
@@ -349,6 +361,7 @@ export default function App() {
           </section>
         </>
       )}
+      </main>
 
       {toast && (
         <div className="toast">

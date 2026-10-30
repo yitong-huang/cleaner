@@ -1,6 +1,10 @@
 :root {
   --bg: #eef3f2;
   --bg-elevated: #fbfcfc;
+  --page-bg:
+    radial-gradient(1000px 420px at 8% -8%, rgba(47, 111, 106, 0.16), transparent 55%),
+    radial-gradient(800px 360px at 100% 0%, rgba(123, 196, 168, 0.18), transparent 48%),
+    linear-gradient(180deg, #e7efed 0%, var(--bg) 40%, #e4ecea 100%);
   --ink: #142221;
   --muted: #5a6d6a;
   --line: #cfdad7;
@@ -40,10 +44,8 @@ body,
 body {
   margin: 0;
   min-width: 320px;
-  background:
-    radial-gradient(1000px 420px at 8% -8%, rgba(47, 111, 106, 0.16), transparent 55%),
-    radial-gradient(800px 360px at 100% 0%, rgba(123, 196, 168, 0.18), transparent 48%),
-    linear-gradient(180deg, #e7efed 0%, var(--bg) 40%, #e4ecea 100%);
+  background: var(--page-bg);
+  background-attachment: fixed;
 }
 
 button,

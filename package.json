@@ -10,7 +10,7 @@
     "dev": "vite",
     "dev:app": "node scripts/electron-dev.mjs",
     "build": "tsc -b && vite build",
-    "build:app": "npm run build && electron-builder --mac",
+    "build:app": "bash scripts/make-dmg.sh",
     "lint": "oxlint",
     "preview": "vite preview",
     "start": "electron ."
@@ -37,7 +37,8 @@
     "appId": "com.cleaner.macos",
     "productName": "Cleaner",
     "directories": {
-      "output": "release"
+      "output": "release",
+      "buildResources": "build"
     },
     "files": [
       "dist/**/*",
@@ -46,11 +47,16 @@
     ],
     "mac": {
       "category": "public.app-category.utilities",
+      "icon": "build/icon.icns",
       "target": [
-        "dmg",
-        "zip"
+        {
+          "target": "dir",
+          "arch": ["arm64"]
+        }
       ],
-      "identity": null
+      "identity": null,
+      "hardenedRuntime": false,
+      "gatekeeperAssess": false
     }
   }
 }

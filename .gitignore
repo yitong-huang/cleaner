@@ -1,3 +1,22 @@
+# Dependencies
+node_modules
+
+# Frontend build
+dist
+dist-ssr
+*.local
+
+# Electron / packaging output
+release
+*.dmg
+*.zip
+*.AppImage
+*.exe
+*.blockmap
+
+# Intermediate iconset (keep build/icon.png & build/icon.icns)
+build/icon.iconset/
+
 # Logs
 logs
 *.log
@@ -7,12 +26,7 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-node_modules
-dist
-dist-ssr
-*.local
-
-# Editor directories and files
+# Editor / OS
 .vscode/*
 !.vscode/extensions.json
 .idea
@@ -22,3 +36,14 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+Thumbs.db
+
+# Env / secrets
+.env
+.env.*
+!.env.example
+
+# TypeScript / tooling caches
+*.tsbuildinfo
+.eslintcache
+.oxlintcache

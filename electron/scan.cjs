@@ -115,7 +115,6 @@ function discoverJetBrainsPaths() {
     }
   }
 
-  const currentPaths = []
   const oldPaths = []
 
   for (const [prefix, entries] of byProduct.entries()) {
@@ -131,19 +130,14 @@ function discoverJetBrainsPaths() {
     })
     const latest = versions[0]
     for (const entry of entries) {
-      if (!installed.has(prefix)) {
-        oldPaths.push(entry.path)
-        continue
-      }
-      if (entry.version === latest) {
-        if (entry.path.includes(`${path.sep}Caches${path.sep}`)) currentPaths.push(entry.path)
-      } else {
+      // Skip current version of still-installed products; only report residue.
+      if (!installed.has(prefix) || entry.version !== latest) {
         oldPaths.push(entry.path)
       }
     }
   }
 
-  return { currentPaths, oldPaths }
+  return oldPaths
 }
 
 function scanDefinitions() {
@@ -155,7 +149,7 @@ function scanDefinitions() {
     'User',
     'globalStorage',
   )
-  const { currentPaths, oldPaths } = discoverJetBrainsPaths()
+  const jetbrainsOldPaths = discoverJetBrainsPaths()
   const simulatorVolumes = '/Library/Developer/CoreSimulator/Volumes'
   const simulatorAssets =
     '/System/Library/AssetsV2/com_apple_MobileAsset_iOSSimulatorRuntime'
@@ -215,20 +209,12 @@ function scanDefinitions() {
       paths: [path.join(HOME, '.npm')],
     },
     {
-      id: 'jetbrains-caches',
-      name: 'JetBrains 当前版本缓存',
-      category: 'IDE',
-      safety: 'safe',
-      description: '仍在使用的 IDE 索引与本地缓存，删除后会自动重建。',
-      paths: currentPaths,
-    },
-    {
       id: 'jetbrains-old',
       name: 'JetBrains 旧版残留',
       category: 'IDE',
       safety: 'safe',
       description: '已卸载产品或旧版本的配置、缓存与日志。',
-      paths: oldPaths,
+      paths: jetbrainsOldPaths,
     },
     {
       id: 'gradle-m2',
