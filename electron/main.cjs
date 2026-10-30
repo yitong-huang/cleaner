@@ -1,6 +1,8 @@
 const { app, BrowserWindow, ipcMain, shell } = require('electron')
+const fs = require('fs')
 const path = require('path')
 const { Worker } = require('worker_threads')
+const { isPhotoPathAllowed } = require('./photos.cjs')
 
 const isDev = !app.isPackaged
 let mainWindow = null
@@ -89,6 +91,47 @@ function runWorkerTask(type, payload = {}) {
   })
 }
 
+async function trashPhotos(paths) {
+  const deleted = []
+  const skipped = []
+  const errors = []
+  const list = Array.isArray(paths) ? paths : []
+
+  for (let i = 0; i < list.length; i += 1) {
+    const raw = list[i]
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('cleaner:progress', {
+        phase: 'clean',
+        current: i + 1,
+        total: list.length,
+        label: path.basename(raw),
+      })
+    }
+    if (!fs.existsSync(raw)) {
+      skipped.push({ path: raw, reason: '不存在' })
+      continue
+    }
+    if (!isPhotoPathAllowed(raw)) {
+      skipped.push({ path: raw, reason: '不在相册允许路径内' })
+      continue
+    }
+    try {
+      const bytes = fs.statSync(raw).size
+      await shell.trashItem(raw)
+      deleted.push({ path: raw, bytes })
+    } catch (error) {
+      errors.push({ path: raw, reason: error.message || String(error) })
+    }
+  }
+
+  return {
+    deleted,
+    skipped,
+    errors,
+    freedBytes: deleted.reduce((sum, item) => sum + item.bytes, 0),
+  }
+}
+
 app.whenReady().then(() => {
   createWindow()
   app.on('activate', () => {
@@ -105,10 +148,14 @@ app.on('window-all-closed', () => {
 })
 
 ipcMain.handle('cleaner:scan', async () => runWorkerTask('scan'))
+ipcMain.handle('cleaner:photos-scan', async () => runWorkerTask('photos-scan'))
 
 ipcMain.handle('cleaner:clean', async (_event, paths) => {
-  if (!Array.isArray(paths)) {
-    throw new Error('paths must be an array')
-  }
+  if (!Array.isArray(paths)) throw new Error('paths must be an array')
   return runWorkerTask('clean', { paths })
+})
+
+ipcMain.handle('cleaner:photos-delete', async (_event, paths) => {
+  if (!Array.isArray(paths)) throw new Error('paths must be an array')
+  return trashPhotos(paths)
 })

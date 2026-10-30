@@ -47,3 +47,37 @@ export interface CleanResult {
   errors: { path: string; reason: string }[]
   freedBytes: number
 }
+
+export interface PhotoItem {
+  id: string
+  path: string
+  fileName: string
+  bytes: number
+  mtime: number
+  thumbDataUrl: string | null
+  keepSuggested: boolean
+}
+
+export interface PhotoGroup {
+  id: string
+  count: number
+  bytes: number
+  reclaimableBytes: number
+  photos: PhotoItem[]
+}
+
+export interface PhotoScanResult {
+  scannedAt: string
+  accessError: string | null
+  summary: {
+    photoCount: number
+    groupCount: number
+    similarGroupCount: number
+    similarPhotoCount: number
+    totalBytes: number
+    reclaimableBytes: number
+  }
+  groups: PhotoGroup[]
+}
+
+export type AppMode = 'system' | 'photos'

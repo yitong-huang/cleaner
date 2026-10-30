@@ -1,4 +1,4 @@
-import type { CleanResult, ScanResult } from './types'
+import type { CleanResult, PhotoScanResult, ScanResult } from './types'
 
 export interface ProgressInfo {
   phase: 'scan' | 'clean'
@@ -20,6 +20,14 @@ export async function fetchScan(): Promise<ScanResult> {
 
 export async function cleanPaths(paths: string[]): Promise<CleanResult> {
   return getApi().clean(paths)
+}
+
+export async function fetchPhotoScan(): Promise<PhotoScanResult> {
+  return getApi().scanPhotos()
+}
+
+export async function deletePhotos(paths: string[]): Promise<CleanResult> {
+  return getApi().deletePhotos(paths)
 }
 
 export function onProgress(callback: (progress: ProgressInfo) => void): () => void {

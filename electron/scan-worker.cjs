@@ -1,5 +1,6 @@
 const { parentPort, workerData } = require('worker_threads')
 const { buildScan, cleanPaths } = require('./scan.cjs')
+const { buildPhotoScan } = require('./photos.cjs')
 
 function report(message) {
   parentPort.postMessage(message)
@@ -13,6 +14,11 @@ try {
     report({ type: 'result', result })
   } else if (workerData?.type === 'clean') {
     const result = cleanPaths(workerData.paths || [], (progress) => {
+      report({ type: 'progress', progress })
+    })
+    report({ type: 'result', result })
+  } else if (workerData?.type === 'photos-scan') {
+    const result = buildPhotoScan((progress) => {
       report({ type: 'progress', progress })
     })
     report({ type: 'result', result })

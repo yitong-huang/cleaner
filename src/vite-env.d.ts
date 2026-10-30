@@ -1,9 +1,11 @@
 import type { ProgressInfo } from './api'
-import type { CleanResult, ScanResult } from './types'
+import type { CleanResult, PhotoScanResult, ScanResult } from './types'
 
 interface CleanerApi {
   scan: () => Promise<ScanResult>
   clean: (paths: string[]) => Promise<CleanResult>
+  scanPhotos: () => Promise<PhotoScanResult>
+  deletePhotos: (paths: string[]) => Promise<CleanResult>
   onProgress: (callback: (progress: ProgressInfo) => void) => () => void
   platform: string
 }
